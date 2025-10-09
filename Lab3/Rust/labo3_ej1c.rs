@@ -31,7 +31,7 @@ fn main() {
     let mut i: usize = 0;
     for hilo in vector_hilos {
         let resultado = hilo.join().unwrap();
-        println!("Termino hilo {} con sumatoria(de {} a {}): {:?}", (i+1), 0, (i), resultado);
+        println!("Termino hilo {} con sumatoria(de {} a {}): {:?}", (i+1), 0, ((i + n) - 1), resultado);
         i += 1;
     }
 }
