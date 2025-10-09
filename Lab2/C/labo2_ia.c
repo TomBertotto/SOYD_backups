@@ -37,10 +37,11 @@ char *leer_comandos() {
 }
 
 int main(void) {
-	
-	printf("Nombre y formato de comandos: \n");
+	printf("\n");
+	printf("Nombre y formato de comandos(no incluir path al archivo, solo el nombre):\n");
+	printf("-------------\n");
 	printf("tokenizar <nombre_archivo>\n");
-
+	printf("vectorizar <nombre_archivo>\n");
 	printf("analizar <nombre_archivo>\n");
 	printf("finalizar\n");
 	printf("-------------\n");
@@ -54,8 +55,8 @@ int main(void) {
 	pid_t childPid;
 
 	while(1){
-		
-		printf("Ingrese comando: \n");
+		printf("\n");
+		printf("prompt>");
 		linea = leer_comandos();
 		
 		if(strcmp(linea, "finalizar") == 0) {
@@ -67,6 +68,7 @@ int main(void) {
 		comando = strtok(linea, " \t");
 		nombre_archivo = strtok(NULL, " \t");
 		chequeo_parametros = strtok(NULL, " \t");
+		char data[] = "data/";	
 
 		if((comando != NULL) && (nombre_archivo != NULL)) {
 			if(chequeo_parametros != NULL) {
@@ -75,9 +77,14 @@ int main(void) {
 				if((strcmp(comando, "tokenizar")) == 0 || (strcmp(comando, "vectorizar")) == 0 || (strcmp(comando, "analizar")) == 0) {
 					childPid = fork();
 					if(childPid == 0){
-						char path[20];
+						char path[20]; //fijo porque los 3 comandos no exceden ese numero
 						sprintf(path, "./%s", comando);
-						execl(path, comando, nombre_archivo, (char *) NULL);
+
+						char path_data[strlen(data)+strlen(nombre_archivo)+1];
+						strcpy(path_data, data);
+						strcat(path_data, nombre_archivo);
+
+						execl(path, comando, path_data, (char *) NULL);
 					}
 
 				} else printf("Error de sintaxis, comando: %s \n", comando);
@@ -86,10 +93,7 @@ int main(void) {
 		} else {
 			printf("No se ingresó un comando y/o archivo \n"); 
 		}
-		
-
-
+		free(linea);
 	}
-
 	exit(EXIT_SUCCESS);
 }

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Visualizador de Archivos</title>
+  <!-- Fuente moderna y minimalista -->
+  <style>
+    :root{
+      --header-height: 64px;
+      --nav-width: 260px;
+      --bg-light: #f9f9fb;
+      --bg-white: #ffffff;
+      --border: #e0e0e0;
+      --text: #222;
+      --accent: #2563eb; /* azul minimal */
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0;}
+    html,body{
+      height:100%;
+      font-family: Arial, Helvetica, sans-serif;
+      background:var(--bg-light);
+      color:var(--text);
+    }
+
+    /* Header */
+    header{
+      position:fixed;
+      top:0; left:0; right:0;
+      height:var(--header-height);
+      background:var(--bg-white);
+      border-bottom:1px solid var(--border);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:600;
+      font-size:1.1rem;
+      z-index:1000;
+    }
+
+    /* Layout */
+    .app{
+      margin-top:var(--header-height);
+      height:calc(100vh - var(--header-height));
+      display:flex;
+      min-height:0;
+    }
+
+    /* Nav */
+    nav{
+      width:var(--nav-width);
+      background:var(--bg-white);
+      border-right:1px solid var(--border);
+      padding:16px;
+      overflow:auto;
+    }
+    nav h2{
+      font-size:0.95rem;
+      font-weight:600;
+      margin-bottom:12px;
+      color:var(--accent);
+    }
+    #listaArchivos{
+      list-style:none;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    #listaArchivos button{
+      width:100%;
+      padding:10px 12px;
+      border:1px solid var(--border);
+      border-radius:6px;
+      background:var(--bg-white);
+      font-weight:500;
+      text-align:left;
+      cursor:pointer;
+      transition:all .2s;
+    }
+    #listaArchivos button:hover{
+      background:var(--accent);
+      color:white;
+      border-color:var(--accent);
+    }
+    #listaArchivos button.active{
+      background:var(--accent);
+      color:white;
+      border-color:var(--accent);
+    }
+
+    /* Contenido */
+    main#contenido{
+      flex:1;
+      padding:24px;
+      overflow:auto;
+      background:var(--bg-light);
+    }
+    .archivo-titulo{
+      font-weight:600;
+      margin-bottom:12px;
+      font-size:1rem;
+      color:var(--accent);
+    }
+    .texto-archivo{
+      white-space:pre-wrap;
+      font-family:monospace;
+      background:var(--bg-white);
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:16px;
+      line-height:1.5;
+      box-shadow:0 1px 3px rgba(0,0,0,0.08);
+    }
+    .placeholder{
+      color:#555;
+    }
+
+    /* Responsive */
+    @media(max-width:820px){
+      .app{flex-direction:column;}
+      nav{width:100%;border-right:none;border-bottom:1px solid var(--border);}
+      main#contenido{border-left:none;}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    Tomás Bertotto - LU: 145294
+  </header>
+
+  <div class="app">
+    <nav>
+      <h2>Menú de Archivos</h2>
+      <ul id="listaArchivos"></ul>
+    </nav>
+    <main id="contenido">
+      <p class="placeholder">Selecciona un archivo del menú para visualizar su contenido aquí.</p>
+    </main>
+  </div>
+
+  <script>
+    function cargarArchivo(nombreArchivo, buttonEl){
+      const contenidoEl=document.getElementById("contenido");
+      document.querySelectorAll("#listaArchivos button").forEach(b=>b.classList.remove("active"));
+      if(buttonEl) buttonEl.classList.add("active");
+
+      contenidoEl.innerHTML="<p class='placeholder'>Cargando "+escapeHtml(nombreArchivo)+"...</p>";
+
+      fetch(nombreArchivo)
+        .then(r=>{
+          if(!r.ok) throw new Error("No se pudo cargar el archivo: "+nombreArchivo);
+          return r.text();
+        })
+        .then(txt=>{
+          contenidoEl.innerHTML=
+            `<div class="archivo-titulo">Archivo: ${escapeHtml(nombreArchivo)}</div>
+             <div class="texto-archivo">${escapeHtml(txt)}</div>`;
+        })
+        .catch(err=>{
+          contenidoEl.innerHTML="<p class='placeholder'>"+escapeHtml(err)+"</p>";
+        });
+    }
+
+    (function(){
+      const lista=document.getElementById("listaArchivos");
+      fetch("archivos_disponibles.txt")
+        .then(r=>{
+          if(!r.ok) throw new Error("No se pudo cargar 'archivos_disponibles.txt'");
+          return r.text();
+        })
+        .then(txt=>{
+          const archivos=txt.split(/\r?\n/).map(a=>a.trim()).filter(a=>a);
+          archivos.forEach(nombre=>{
+            const li=document.createElement("li");
+            const btn=document.createElement("button");
+            btn.textContent=nombre;
+            btn.onclick=()=>cargarArchivo(nombre,btn);
+            li.appendChild(btn);
+            lista.appendChild(li);
+          });
+        })
+        .catch(err=>{
+          document.getElementById("contenido").textContent="Error: "+err;
+        });
+    })();
+
+    function escapeHtml(str){
+      return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+    }
+  </script>
+</body>
+</html>
+

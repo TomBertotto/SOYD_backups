@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 typedef struct {
 	char *palabra;
@@ -19,7 +20,7 @@ char *leer_linea(FILE* archivo) {
 	}
 
 	int i = 0;
-	char caracter_actual = fgetc(archivo);
+	char caracter_actual = tolower((unsigned char)fgetc(archivo));
 	char *aux;
 	if(caracter_actual == EOF) {
 		free(buffer);
@@ -39,12 +40,24 @@ char *leer_linea(FILE* archivo) {
 		}
 		buffer[i] = (char) caracter_actual;
 		i++;
-		caracter_actual = fgetc(archivo);
-	}	
+		caracter_actual = tolower((unsigned char)fgetc(archivo));
+	}
 	buffer[i++] = '\n';
 	buffer[i] = '\0';	
 	return buffer;
 }
+
+
+char *sacar_formato(char *archivo){
+	char *nuevo_nombre = (char *)malloc(strlen(archivo));
+	int i = 0;
+	while ((i < strlen(archivo)) && (archivo[i] != '.')){
+		nuevo_nombre[i] = archivo[i];
+		i++;
+	}
+	return nuevo_nombre;
+}
+
 
 int main(int argc, char *argv[]){
 
@@ -58,10 +71,11 @@ int main(int argc, char *argv[]){
 		exit(EXIT_FAILURE);
 	}
 
-	char formato[] = "_vector.txt";
-	char archivo_output[strlen(nombre_archivo_entrada) + strlen(formato) + 1];
-	strcpy(archivo_output, nombre_archivo_entrada);
-	strcat(archivo_output, formato);
+	char formato[] = "_vector.txt";	
+	char *nombre_sin_formato = sacar_formato(nombre_archivo_entrada);
+	char archivo_output[strlen(nombre_sin_formato) + strlen(formato) + 1];
+	strcpy(archivo_output, nombre_sin_formato);
+	strcat(archivo_output, formato);	
 	FILE* archivo_vectorizado = fopen(archivo_output, "w");
 
 	ParFrecuencia *tabla_pares = NULL;
@@ -137,9 +151,11 @@ int main(int argc, char *argv[]){
 	for(int k=0; k < tamanio_tabla; k++){ //necesario por usar strdup antes
 		free(tabla_pares[k].palabra);
 	}
-
+	
+	free(linea);
 	free(tabla_pares);
 	tabla_pares = NULL;
+	free(nombre_sin_formato);
 	fclose(archivo_entrada);
 	fclose(archivo_vectorizado);
 	exit(EXIT_SUCCESS);

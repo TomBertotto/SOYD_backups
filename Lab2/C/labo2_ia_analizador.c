@@ -43,6 +43,18 @@ char *leer_linea(FILE* archivo) {
 	return buffer;
 }
 
+
+char *sacar_formato(char *archivo){
+	char *nuevo_nombre = (char *)malloc(strlen(archivo));
+	int i = 0;
+	while ((i < strlen(archivo)) && (archivo[i] != '.')){
+		nuevo_nombre[i] = archivo[i];
+		i++;
+	}
+	return nuevo_nombre;
+}
+
+
 int main(int argc, char *argv[]){
 
 	char *nombre_archivo_entrada = argv[1];
@@ -55,9 +67,10 @@ int main(int argc, char *argv[]){
 	}
 
 	char formato[] = "_analisis.txt";
-	char archivo_output[strlen(nombre_archivo_entrada) + strlen(formato) + 1];
-	strcpy(archivo_output, nombre_archivo_entrada);
-	strcat(archivo_output, formato);
+	char *nombre_sin_formato = sacar_formato(nombre_archivo_entrada);
+	char archivo_output[strlen(nombre_sin_formato) + strlen(formato) + 1];
+	strcpy(archivo_output, nombre_sin_formato);
+	strcat(archivo_output, formato);	
 	FILE* archivo_analizado = fopen(archivo_output, "w");
 
 	char *linea;
@@ -70,11 +83,13 @@ int main(int argc, char *argv[]){
 		token_actual = strtok(linea, delimitadores);
 		while(token_actual != NULL) {
 			if((strcmp(token_actual, POSITIVAS[0] ) == 0) || (strcmp(token_actual,POSITIVAS[1] ) == 0)
-				       	|| (strcmp(token_actual, POSITIVAS[2]) == 0) || (strcmp(token_actual,POSITIVAS[3]) == 0) || (strcmp(token_actual, POSITIVAS[4]) == 0))
+				|| (strcmp(token_actual, POSITIVAS[2]) == 0) || (strcmp(token_actual,POSITIVAS[3]) == 0)
+			       		|| (strcmp(token_actual, POSITIVAS[4]) == 0))
 				cont_positivas++;
 
 			if((strcmp(token_actual, NEGATIVAS[0]) == 0) || (strcmp(token_actual, NEGATIVAS[1]) == 0)
-				       	|| (strcmp(token_actual, NEGATIVAS[2]) == 0) || (strcmp(token_actual, NEGATIVAS[3]) == 0) || (strcmp(token_actual, NEGATIVAS[4]) == 0))
+				|| (strcmp(token_actual, NEGATIVAS[2]) == 0) || (strcmp(token_actual, NEGATIVAS[3]) == 0)
+			       		|| (strcmp(token_actual, NEGATIVAS[4]) == 0))
 				cont_negativas++;
 
 			token_actual = strtok(NULL, delimitadores);
@@ -92,5 +107,6 @@ int main(int argc, char *argv[]){
 	fclose(archivo_entrada);
 	fclose(archivo_analizado);
 	free(linea);
+	free(nombre_sin_formato);
 }
 

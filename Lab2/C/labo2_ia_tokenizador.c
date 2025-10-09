@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 char *leer_linea(FILE* archivo) {
 	int tamanio_buffer = sizeof(char) *20;
@@ -12,7 +13,7 @@ char *leer_linea(FILE* archivo) {
 	}
 
 	int i = 0;
-	char caracter_actual = fgetc(archivo);
+	char caracter_actual = tolower((unsigned char)fgetc(archivo));
 	char *aux;
 	if(caracter_actual == EOF) {
 		free(buffer);
@@ -32,13 +33,22 @@ char *leer_linea(FILE* archivo) {
 		}
 		buffer[i] = (char) caracter_actual;
 		i++;
-		caracter_actual = fgetc(archivo);
+		caracter_actual = tolower((unsigned char)fgetc(archivo));
 	}	
 	buffer[i++] = '\n';
 	buffer[i] = '\0';	
 	return buffer;
 }
 
+char *sacar_formato(char *archivo){
+	char *nuevo_nombre = (char *)malloc(strlen(archivo));
+	int i = 0;
+	while ((i < strlen(archivo)) && (archivo[i] != '.')){
+		nuevo_nombre[i] = archivo[i];
+		i++;
+	}
+	return nuevo_nombre;
+}
 
 int main(int argc, char *argv[]){
 
@@ -53,15 +63,16 @@ int main(int argc, char *argv[]){
 	}
 
 	char formato[] = "_tokens.txt";
-	char archivo_output[strlen(nombre_archivo_entrada) + strlen(formato) + 1];
-	strcpy(archivo_output, nombre_archivo_entrada);
+	char *nombre_sin_formato = sacar_formato(nombre_archivo_entrada);
+	char archivo_output[strlen(nombre_sin_formato) + strlen(formato) + 1];
+	strcpy(archivo_output, nombre_sin_formato);
 	strcat(archivo_output, formato);
 	FILE* archivo_tokenizado = fopen(archivo_output, "w");
 
 
 	fprintf(archivo_tokenizado, "[");
 	
-	int primera_palabra = 1; // para evitar agregar una coma al comienzo
+	int primera_palabra = 1; // bandera para evitar agregar una coma al comienzo
 	char *token_actual;
 	char *linea;
 
@@ -79,8 +90,10 @@ int main(int argc, char *argv[]){
 		}
 		free(linea);
 	}
-
+	
 	fprintf(archivo_tokenizado, "]\n");
+	free(nombre_sin_formato);
+	free(linea);
 	fclose(archivo_entrada);
 	fclose(archivo_tokenizado);
 	exit(EXIT_SUCCESS);
