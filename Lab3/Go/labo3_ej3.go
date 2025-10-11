@@ -107,8 +107,6 @@ func main() {
 	var palabras_analizar []string
 	palabras_analizar = make([]string, len(os.Args) - 1)
 	var palabras_coinciden []string
-	palabras_coinciden = make([]string, len(os.Args) - 1)
-	
 	contP := 0
 	contN := 0
 	contT := 0
@@ -134,9 +132,12 @@ func main() {
 		contT = 0
 		fmt.Println("")
 	}
-	fmt.Println("======================================\n")
+	
 
+	fmt.Println("=======================================================")
 	var wg sync.WaitGroup
+	var archivos_no_encontrados int = 0
+	var mutex sync.Mutex
 	for i, usuario := range usuarios {
 		wg.Add(1)
 		go func(index int, us string) {
@@ -151,8 +152,10 @@ func main() {
 			defer request.Body.Close()
 
 			if request.StatusCode == http.StatusNotFound {
-				fmt.Printf("Archivo no encontrado del usuario: %s\n", usuario)
-				fmt.Printf("-----------------------------------\n")
+				//uso un contador para no mostrar tantos mensajes repetidos si el archivo no esta
+				mutex.Lock()
+				archivos_no_encontrados++
+				mutex.Unlock()
 				return
 			}
 	
@@ -167,17 +170,24 @@ func main() {
 		}(i, usuario)
 
 	}
-	
+
+	fmt.Println("=======================================================")
 	wg.Wait()
+	fmt.Printf("La cantidad de archivos no encontrados es: %d\n", archivos_no_encontrados)
+	fmt.Println("=======================================================")
+	
 	for _, res := range resultados {
 		if res.pesos == nil {
 			continue
 		}
-		fmt.Printf("Resultado del archivo del usuario %s\n", res.usuario)
+		fmt.Printf("Resultado (<palabra>: <peso>) del archivo del usuario %s\n", res.usuario)
+		fmt.Println("")
 		for i, palabra := range palabras_coinciden {
-			fmt.Printf("%s: %d\n", palabra, res.pesos[i])
+			fmt.Printf(" '%s': %d |", palabra, res.pesos[i])
 		}
-		fmt.Println("------------------------------------")
+		fmt.Println("")
+		fmt.Println("-----------------------------------------------------------------------")
+		fmt.Println("")
 	}
 }
 
