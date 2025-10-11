@@ -127,9 +127,9 @@ func main() {
 	for i := 0; i  < len(palabras_analizar); i++ {
 		palabras_analizar[i] = os.Args[i + 1]
 		for j := 0; j < tamanio_arreglos; j++ {
-			if palabras_analizar[i] == p_positivas [j] {contP = 1}	
-			if palabras_analizar[i] == p_negativas [j] {contN = 1}
-			if palabras_analizar[i] == p_testeo [j] {contT = 1}
+			if palabras_analizar[i] == p_positivas[j] {contP = 1}	
+			if palabras_analizar[i] == p_negativas[j] {contN = 1}
+			if palabras_analizar[i] == p_testeo[j] {contT = 1}
 		}
 		fmt.Printf("Palabra '%s' con categoría: ", palabras_analizar[i])
 		if contT != 0 { fmt.Printf("testeo ")}
@@ -147,9 +147,11 @@ func main() {
 	}
 	fmt.Println("======================================\n")
 
-	cant_alumnos := 1
-	var lu_alumnos[1]string
+	var cant_alumnos int = 3
+	var lu_alumnos[2]string
 	lu_alumnos[0] = "alu_145294"
+	lu_alumnos[1] = "alu_142542"
+	lu_alumnos[2] = "alu_83654"
 	var wg sync.WaitGroup
 	for i := 0; i < cant_alumnos ; i++ {
 		wg.Add(1)
