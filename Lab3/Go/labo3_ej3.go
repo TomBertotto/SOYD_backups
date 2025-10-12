@@ -73,6 +73,7 @@ func analizarArchivo(usuario, contenido string, palabras []string, pesoUser *pes
 	pesoUser.usuario = usuario
 	pesoUser.pesos = make([]int, len(palabras))
 	pesoUser.es_test = false
+	pesoUser.resultado = 0
 
 	for i:= 0; i < len(palabras_archivo); i++ {
 		palabras_archivo[i] = strings.TrimSpace(palabras_archivo[i])
@@ -159,11 +160,11 @@ func main() {
 	
 	if len(os.Args) < 4 {
 		fmt.Println("Error en cantidad de argumentos")
-		fmt.Println("Formato: ./labo3_ej3 <palabra1> <palabra2> <palabra3>")
+		fmt.Println("Formato: ./labo3_ej3 <palabra1> <palabra2> <palabra3> <...> <palabraN>")
 		fmt.Println("")	
-		fmt.Println("Palabras positivas: bueno, genial, positivo, feliz, contento")
-		fmt.Println("Palabras negativas: peor, triste, odio, terrible, negativo")
-		fmt.Println("Palabras testeo: probar, prueba, test, intento, funciona")
+		fmt.Println("Palabras positivas: bueno, correcto, positivo, feliz, contento")
+		fmt.Println("Palabras negativas: peor, triste, odio, mal, falla")
+		fmt.Println("Palabras testeo: prueba, correcto, test, falla, funciona")
 		os.Exit(1)
 	}
 
