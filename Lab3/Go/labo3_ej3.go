@@ -19,6 +19,21 @@ const (
 )
 
 
+type pesoUsuarios struct {
+	usuario string
+	pesos []int
+	resultado int
+	es_test bool
+}
+
+//-------------PALABRAS DE LA BD------------------
+
+var p_positivas = [tamanio_arreglos]string{"bueno", "correcto", "positivo", "feliz", "contento"}
+var p_negativas = [tamanio_arreglos]string{"peor", "triste", "odio", "mal", "falla"}
+var p_testeo = [tamanio_arreglos]string{"prueba", "correcto", "test", "falla", "funciona"}
+//------------------------------------------------
+
+
 func obtenerUsuarios() ([]string, error) {
 	request_al_index, err := http.Get(pag_principal_url)
 	if err != nil {
@@ -39,11 +54,11 @@ func obtenerUsuarios() ([]string, error) {
 }
 
 
-func analizarArchivo(usuario, contenido string, palabras []string) []int  {
+func analizarArchivo(usuario, contenido string, palabras []string, pesoUser *pesoUsuarios)  {
 	lineas := strings.Split(strings.TrimSpace(contenido), "\n")
 	if len(lineas) < 2 {
 		fmt.Printf("Mal formato de texto del usuario %s, no contiene 2 lineas\n", usuario)
-		return nil
+		return
 	}
 	linea_palabras := strings.Trim(lineas[0], "[] ")
 	linea_valores := strings.Trim(lineas[1], "[] ")
@@ -52,10 +67,12 @@ func analizarArchivo(usuario, contenido string, palabras []string) []int  {
 	valores_archivo := strings.Split(linea_valores, ",")
 	if len(palabras_archivo) != len(valores_archivo) {
 		fmt.Printf("No coinciden la cantidad de palabras con cantidad de valores en el archivo del usuario: %s\n", usuario)
-		return nil
+		return
 	}
 	
-	pesos := make([]int, len(palabras))
+	pesoUser.usuario = usuario
+	pesoUser.pesos = make([]int, len(palabras))
+	pesoUser.es_test = false
 
 	for i:= 0; i < len(palabras_archivo); i++ {
 		palabras_archivo[i] = strings.TrimSpace(palabras_archivo[i])
@@ -66,15 +83,77 @@ func analizarArchivo(usuario, contenido string, palabras []string) []int  {
 			conversion, err := strconv.Atoi(valores_archivo[i])
 			if err == nil {
 				if palabras_archivo[i] == palabras[j] {
-					pesos[j] = conversion
+					pesoUser.pesos[j] = conversion
+					
+					if !pesoUser.es_test {
+						pesoUser.es_test = esPalabraTest(palabras_archivo[i])
+					}
+
+					if esPalabraPositiva(palabras[j]) {
+						pesoUser.resultado += conversion
+					}
+
+					if esPalabraNegativa(palabras[j]) {
+						pesoUser.resultado -= conversion
+					}
 				}
 			}
 		}
 	}
-	return pesos
+	
 }
 
 
+func esPalabraNegativa(palabra string) bool {
+	var es = false
+	for i:= 0; i < tamanio_arreglos; i++ {
+		if p_negativas[i] == palabra {
+			es = true
+			break
+		}
+	}
+	return es
+}
+
+func esPalabraPositiva(palabra string) bool {
+	var es = false
+	for i:= 0; i < tamanio_arreglos; i++ {
+		if p_positivas[i] == palabra {
+			es = true
+			break
+		}
+	}
+	return es
+}
+
+func esPalabraTest(palabra string) bool {
+	var es_test = false
+	for i:= 0; i < tamanio_arreglos; i++ {
+		if p_testeo[i] == palabra {
+			es_test = true
+			break
+		}
+	}
+	return es_test
+}
+
+func filtrarUsuarios(usuarios []string) []string {
+	var filtrados[]string
+	var duplicado  bool = false
+	for _, actual := range usuarios {
+		duplicado = false
+		for _, filtrado := range filtrados {
+			if filtrado == actual {
+				duplicado = true
+				break
+			}
+		}
+		if !duplicado {
+			filtrados = append(filtrados, actual)
+		}
+	}
+	return filtrados
+}
 
 func main() {
 	
@@ -87,10 +166,6 @@ func main() {
 		fmt.Println("Palabras testeo: probar, prueba, test, intento, funciona")
 		os.Exit(1)
 	}
-	
-	p_positivas := [tamanio_arreglos]string{"bueno", "correcto", "positivo", "feliz", "contento"}
-	p_negativas := [tamanio_arreglos]string{"peor", "triste", "odio", "mal", "falla"}
-	p_testeo := [tamanio_arreglos]string{"prueba", "correcto", "test", "falla", "funciona"}
 
 
 	usuarios, err := obtenerUsuarios()
@@ -98,11 +173,9 @@ func main() {
 		fmt.Println("ERROR en obtener los usuarios\n")
 		os.Exit(1)
 	}
-	type pesoUsuarios struct {
-		usuario string
-		pesos []int
-	}
-
+	
+	usuarios = filtrarUsuarios(usuarios) //algunos quedan duplicados y los saco manualmente
+	
 	resultados := make([]pesoUsuarios, len(usuarios))
 	var palabras_analizar []string
 	palabras_analizar = make([]string, len(os.Args) - 1)
@@ -136,8 +209,6 @@ func main() {
 
 	fmt.Println("=======================================================")
 	var wg sync.WaitGroup
-	var archivos_no_encontrados int = 0
-	var mutex sync.Mutex
 	for i, usuario := range usuarios {
 		wg.Add(1)
 		go func(index int, us string) {
@@ -151,29 +222,43 @@ func main() {
 			}
 			defer request.Body.Close()
 
-			if request.StatusCode == http.StatusNotFound {
-				//uso un contador para no mostrar tantos mensajes repetidos si el archivo no esta
-				mutex.Lock()
-				archivos_no_encontrados++
-				mutex.Unlock()
-				return
-			}
-	
-			contenido, err := io.ReadAll(request.Body) //leo en lugar de descargar el archivo entero
-			if err != nil {
-				fmt.Printf("Error al leer el archivo del usuario %s, error: %v\n", usuario, err)
+			if request.StatusCode == http.StatusNotFound || request.StatusCode != http.StatusOK {
 				return
 			}
 
-			resultado_actual := analizarArchivo(us, string(contenido), palabras_coinciden)
-			resultados[index] = pesoUsuarios{usuario: us, pesos: resultado_actual}
+			archivo_nuevo, err := os.Create(formato_archivo + usuario + ".txt")
+			if err != nil {
+				fmt.Printf("No se pudo crear el archivo\n")
+				return
+			}
+
+			defer archivo_nuevo.Close()
+
+			_, err = io.Copy(archivo_nuevo, request.Body)
+			if err != nil {
+				fmt.Printf("Error al copiar al archivo de salida\n")
+				return
+			}
+			
+			_, err = archivo_nuevo.Seek(0, 0)
+			if err != nil {
+				fmt.Printf("Error al reposicionar puntero al comienzo del archivo\n")
+				return
+			}
+			
+			contenido, err := io.ReadAll(archivo_nuevo)
+			if err != nil {
+				fmt.Printf("Error al leer del archivo creado\n")
+				return
+			}
+		
+			analizarArchivo(us, string(contenido), palabras_coinciden, &resultados[index])
+		
 		}(i, usuario)
 
 	}
 
-	fmt.Println("=======================================================")
 	wg.Wait()
-	fmt.Printf("La cantidad de archivos no encontrados es: %d\n", archivos_no_encontrados)
 	fmt.Println("=======================================================")
 	
 	for _, res := range resultados {
@@ -184,6 +269,19 @@ func main() {
 		fmt.Println("")
 		for i, palabra := range palabras_coinciden {
 			fmt.Printf(" '%s': %d |", palabra, res.pesos[i])
+		}
+		fmt.Println()
+		fmt.Printf("Resultado final: ")
+		if res.es_test {
+			fmt.Printf("TESTEO ")
+		}
+
+		if res.resultado > 0 {
+			fmt.Printf("POSITIVO\n")
+		} else if res.resultado < 0 {
+			fmt.Printf("NEGATIVO\n")
+		} else {
+			fmt.Printf("NEUTRO\n")
 		}
 		fmt.Println("")
 		fmt.Println("-----------------------------------------------------------------------")
