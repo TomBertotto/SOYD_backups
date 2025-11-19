@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"net"
 	"strings"
 	"os"
@@ -27,7 +26,7 @@ func ejecutarPut(nombre_archivo string, addrNamenode string) {
 	
 	fmt.Printf("Archivo: %s (%d bytes) -> %d bloques de 1KB\n", nombre_archivo, tamanio_archivo, cant_bloques)
 
-	msg := fmt.Sprintf("put %s %d\n"), nombre_archivo, cant_bloques)
+	msg := fmt.Sprintf("put %s %d\n", nombre_archivo, cant_bloques)
 
 	conn, err := net.Dial("tcp", addrNamenode)
 	if err != nil {
@@ -65,7 +64,7 @@ func ejecutarPut(nombre_archivo string, addrNamenode string) {
 
 func procesarComando(input string, addrNamenode string) {
 	partes := strings.Fields(input)
-	comando := strings.ToLower(parts[0])
+	comando := strings.ToLower(partes[0])
 
 	switch comando {
 	case "put": 
@@ -81,16 +80,16 @@ func procesarComando(input string, addrNamenode string) {
 			fmt.Println("Incorrecto, uso: get <archivo>")
 			return
 		}
-		ejecutarGet(partes[1], addrNamenode)	
+		//ejecutarGet(partes[1], addrNamenode)	
 	
 	case "ls":
-		ejecutarLsInfo(partes[0], addrNamenode)
+		//ejecutarLsInfo(partes[0], addrNamenode)
 	case "info":
 		if len(partes) < 2 {
 			fmt.Println("Incorrecto, uso: info <archivo>")
 			return
 		}
-		ejecutarLsInfo(partes[1], addrNamenode)
+		//ejecutarLsInfo(partes[1], addrNamenode)
 		
 	default: fmt.Println("Comando no válido:", comando)
 	}
@@ -104,20 +103,22 @@ func main() {
 	}
 
 	addrNamenode := os.Args[1]
+	reader:= bufio.NewReader(os.Stdin)
 
 	fmt.Println("----------CLIENTE DFS----------")
 	fmt.Println("Comandos: put <archivo>, get<archivo>, ls, info <archivo>, exit")
 
 	for {
-		fmt.Prtint("dfs> ")
-
+		fmt.Print("dfs> ")
+		
 		input, err := reader.ReadString('\n')
 		if err != nil {
 			fmt.Println("Error leyendo la entrada:", err)
 			continue
 		}
-
+		
 		input = strings.TrimSpace(input)
+
 		if input == "" {
 			continue
 		}
