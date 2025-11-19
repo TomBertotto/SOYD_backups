@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"strconv"
 	"os"
 )
 
@@ -33,12 +34,12 @@ func enviarBloqueADatanode(addr string, blockID string, data[]byte) error {
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		fmt.Println("CLIENTE: error al conectar a DATANODE:", err)
-		return
+		return err
 	}
 	defer conn.Close()
 
 	fmt.Fprintf(conn, "store %s\n", blockID)
-	_, err := conn.Write(data)
+	_, err = conn.Write(data)
 	if err != nil {
 		fmt.Println("CLIENTE: error enviando bloque:", err)
 		return err
@@ -62,7 +63,7 @@ func ejecutarPut(nombre_archivo string, addrNamenode string) {
 
 
 
-	conn, err := net.Dial("tcp", addrNamenode)
+	conn, err := net.Dial("tcp", addrNamenode) //me conecto al namenode
 	if err != nil {
 		fmt.Println("Error conectado con el namenode:", err)
 		return
@@ -92,7 +93,7 @@ func ejecutarPut(nombre_archivo string, addrNamenode string) {
 		partes := strings.Fields(linea)
 		if len(partes) == 2 {
 			blockIDStr := strings.TrimPrefix(partes[0], "b")
-			blockID, err := strconv.Ato(blockIDStr)
+			blockID, err := strconv.Atoi(blockIDStr)
 			if err == nil {
 				asignaciones_bloques[blockID] = partes[1]
 			}
@@ -104,8 +105,8 @@ func ejecutarPut(nombre_archivo string, addrNamenode string) {
 	for bloqueID, addrDatanode := range asignaciones_bloques {
 		data := bloques[bloqueID]
 		fmt.Printf("Enviando bloque %d a %s\n", bloqueID, addrDatanode)
-		id_bloque := generarID(nombre_archivo, bloqueID)
-		err := enviarBloqueADatanode(addrDatanode, id_bloque, data)
+		id_bloque := generarID(nombre_archivo, bloqueID)//CONVENCION: tomo que el id es nombre_archivo_b0.txt, nombre_archivo_b1.txt...
+		err := enviarBloqueADatanode(addrDatanode, id_bloque, data) //me conecto a los datanodes
 		if err != nil {
 			fmt.Printf("CLIENTE: error enviando el bloque %d -> %s\n", bloqueID, addrDatanode)
 		}

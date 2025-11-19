@@ -28,13 +28,13 @@ func almacenarBloque(reader *bufio.Reader, blockID string) {
 		return
 	}
 
-	file.Write(buffer)
+	archivo.Write(buffer)
 	fmt.Println("Bloque ", blockID, " almacenado")
 }
 
 func enviarBloque(conn net.Conn, blockID string) {
 	ruta := bloquesDir + blockID
-	data, er := os.ReadFile(ruta)
+	data, err := os.ReadFile(ruta)
 	if err != nil {
 		fmt.Println("DATANODE: error leyendo bloque con READ, bloque:", blockID)
 		return
@@ -80,7 +80,7 @@ func main() {
 	fmt.Println("DATANODE: escuchando en el puerto 5000")
 
 	for {
-		conn, err := ln.Accept()
+		conn, err := listener.Accept()
 		if err != nil {
 			continue
 		}
