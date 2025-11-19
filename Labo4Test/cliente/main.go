@@ -11,22 +11,56 @@ import (
 
 const BLOCK_TAMANIO = 1024
 
+func generarID(nombre_archivo string, bloque int) string {
+	base := strings.TrimSuffix(nombre_archivo, ".txt")
+	return fmt.Sprintf("%s_b%d.txt", base, bloque)
+}
+
+func dividirEnBloques(archivo []byte) [][]byte {
+	var bloques[][]byte
+	for i:= 0; i < len(archivo); i+=BLOCK_TAMANIO {
+		fin := i + BLOCK_TAMANIO
+		if fin > len(archivo) {
+			fin = len(archivo)
+		}
+		bloques = append(bloques, archivo[i:fin])
+	}
+	return bloques
+}
+
+func enviarBloqueADatanode(addr string, blockID string, data[]byte) error {
+	
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		fmt.Println("CLIENTE: error al conectar a DATANODE:", err)
+		return
+	}
+	defer conn.Close()
+
+	fmt.Fprintf(conn, "store %s\n", blockID)
+	_, err := conn.Write(data)
+	if err != nil {
+		fmt.Println("CLIENTE: error enviando bloque:", err)
+		return err
+	}
+	return nil
+}
+
 func ejecutarPut(nombre_archivo string, addrNamenode string) {
 	archivo, err := os.ReadFile(nombre_archivo)
 	if err != nil {
 		fmt.Println("Error abriendo archivo:", err)
 		return
 	}
-
-	tamanio_archivo := len(archivo)
-	cant_bloques := tamanio_archivo / BLOCK_TAMANIO
-	if tamanio_archivo % BLOCK_TAMANIO != 0 {
-		cant_bloques++
-	}
 	
-	fmt.Printf("Archivo: %s (%d bytes) -> %d bloques de 1KB\n", nombre_archivo, tamanio_archivo, cant_bloques)
+	bloques := dividirEnBloques(archivo)
+	cant_bloques := len(bloques)
+	
+	fmt.Printf("Archivo: %s (%d bytes) -> %d bloques de 1KB\n", nombre_archivo, len(archivo), cant_bloques)
 
 	msg := fmt.Sprintf("put %s %d\n", nombre_archivo, cant_bloques)
+
+
 
 	conn, err := net.Dial("tcp", addrNamenode)
 	if err != nil {
@@ -38,8 +72,10 @@ func ejecutarPut(nombre_archivo string, addrNamenode string) {
 	conn.Write([]byte(msg))
 	
 	fmt.Println("Cliente esperando asignacion de datanodes...")
-
+	
 	reader := bufio.NewReader(conn)
+	asignaciones_bloques := make(map[int]string)
+
 	for {
 		linea, err := reader.ReadString('\n')
 		if err != nil {
@@ -53,11 +89,31 @@ func ejecutarPut(nombre_archivo string, addrNamenode string) {
 		}
 
 		fmt.Println("---", linea, "---")
+		partes := strings.Fields(linea)
+		if len(partes) == 2 {
+			blockIDStr := strings.TrimPrefix(partes[0], "b")
+			blockID, err := strconv.Ato(blockIDStr)
+			if err == nil {
+				asignaciones_bloques[blockID] = partes[1]
+			}
+		}
 	}
 
-	//FALTA IMPLEMENTAR ENVIO A LOS DATANODES!!!!!!!!!!!!!!!!!!!!!!!
+	fmt.Println("CLIENTE: enviando datos a DATANODES")
 
-
+	for bloqueID, addrDatanode := range asignaciones_bloques {
+		data := bloques[bloqueID]
+		fmt.Printf("Enviando bloque %d a %s\n", bloqueID, addrDatanode)
+		id_bloque := generarID(nombre_archivo, bloqueID)
+		err := enviarBloqueADatanode(addrDatanode, id_bloque, data)
+		if err != nil {
+			fmt.Printf("CLIENTE: error enviando el bloque %d -> %s\n", bloqueID, addrDatanode)
+		}
+	}
+	
+	fmt.Println("CLIENTE: se completo la transferencia")
+	fmt.Println("CLIENTE: enviando ACK al NAMENODE")
+	fmt.Fprintf(conn, "ACK\n")
 }
 
 
