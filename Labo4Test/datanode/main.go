@@ -7,12 +7,15 @@ import (
 	"net"
 	"os"
 	"strings"
+	"strconv"
 )
 
 const bloquesDir = "./blocks/"
 const BLOQUE_TAMANIO = 1024
+//soyd2025soYD..
 
-func almacenarBloque(reader *bufio.Reader, blockID string) {
+//so2025YD..
+func almacenarBloque(reader *bufio.Reader, blockID string, size int) {
 	ruta := bloquesDir + blockID
 	archivo, err := os.Create(ruta)
 	if err != nil {
@@ -21,7 +24,7 @@ func almacenarBloque(reader *bufio.Reader, blockID string) {
 	}
 	defer archivo.Close()
 
-	buffer := make([]byte, BLOQUE_TAMANIO)
+	buffer := make([]byte, size)
 	_, err = io.ReadFull(reader, buffer)
 	if err != nil {
 		fmt.Println("DATANODE: error leyendo el bloque del buffer")
@@ -32,7 +35,7 @@ func almacenarBloque(reader *bufio.Reader, blockID string) {
 	fmt.Println("Bloque ", blockID, " almacenado")
 }
 
-func enviarBloque(conn net.Conn, blockID string) {
+func enviarBloque(conn net.Conn, blockID string, size int) {
 	ruta := bloquesDir + blockID
 	data, err := os.ReadFile(ruta)
 	if err != nil {
@@ -49,20 +52,26 @@ func administrarConexion(conn net.Conn) {
 	reader := bufio.NewReader(conn)
 	linea, err := reader.ReadString('\n')
 	partes := strings.Fields(linea)
-	if err != nil || len(partes) < 2{
+	if err != nil || len(partes) < 3 {
 		fmt.Println("DATANODE: error leyendo comando")
 		return
 	}
 	
 	comando := partes[0]
 	blockID := partes[1]
+	sizeStr := strings.TrimSpace(partes[2])
+	sizeStr = strings.TrimSuffix(sizeStr, "\r")
+	size, err := strconv.Atoi(sizeStr)
+	if err != nil {
+		fmt.Println("DATANODE: error procesando SIZE")
+		return
+	}
 
 	switch comando {
 	case "store":
-
-		almacenarBloque(reader, blockID)
+		almacenarBloque(reader, blockID, size)
 	case "read":
-		enviarBloque(conn, blockID)
+		enviarBloque(conn, blockID, size)
 	}
 }
 
