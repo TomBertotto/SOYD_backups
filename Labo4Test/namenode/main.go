@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"encoding/json"
 	"strings"
+	"os"
 	"strconv"
 )
 
@@ -14,23 +16,89 @@ var datanodes = []string {//hardcodeados
 	"192.168.0.11:5001",
 }
 
-func ejecutarPut(partes []string, conn net.Conn) {
+var asignaciones = make(map[string][]struct {
+	Bloque string //formato b0,b1...
+	Node string //formato IP:PUERTO
+})
+
+
+func actualizarMetadata(nombre_archivo string) {
+	metadata := make(map[string][]map[string]string)
+
+	contenido, err := os.ReadFile("metadata.json")
+	if err == nil {
+		json.Unmarshal(contenido, &metadata)
+	}
+
+	var bloques []map[string]string
+
+	for _, info := range asignaciones[nombre_archivo] {
+		bloques = append(bloques, map[string]string{
+			"block": info.Bloque,
+			"node": info.Node,
+		})
+	}
+
+	metadata[nombre_archivo] = bloques
+
+	nuevo, _ := json.MarshalIndent(metadata, "", " ")
+	os.WriteFile("metadata.json", nuevo, 0644)
+	fmt.Println("NAMENODE: metadata.json actualizado")
+}
+
+
+func ejecutarPut(partes []string, conn net.Conn, reader *bufio.Reader) {
 	nombre_archivo := partes[1]
 	cant_bloques, err := strconv.Atoi(partes[2])
 	if err != nil {
 		conn.Write([]byte("NAMENODE ERROR: cantidad de bloques no valida\n"))
 		return
 	}
+	
 
 	fmt.Printf("NAMENODE: Recibi PUT %s con %d bloques\n", nombre_archivo, cant_bloques)
 
+	asignaciones[nombre_archivo] = []struct {
+		Bloque string
+		Node string
+	}{}
+
 	for i:= 0; i < cant_bloques; i++ {
 		dn := datanodes[i % len(datanodes)] //tipo RoundRobin
+		
+		bloque_nro := fmt.Sprintf("b%d", i)
+		asignaciones[nombre_archivo] = append(
+			asignaciones[nombre_archivo],
+			struct{ Bloque, Node string }{
+				Bloque: bloque_nro,
+				Node: dn,
+		},
+		)
+		
 		linea := fmt.Sprintf("b%d %s\n", i, dn)
 		conn.Write([]byte(linea))
 	}
 
 	conn.Write([]byte("END\n")) //por protocolo para que reciba el cliente
+
+	//------------ESPERA POR ACK-----------------
+	ack_respuesta, err := reader.ReadString('\n')
+	if err != nil {
+		fmt.Println("NAMENODE: error leyendo ACK", err)
+		return
+	}
+	ack_respuesta = strings.TrimSpace(ack_respuesta)
+
+	if ack_respuesta == "ACK" {
+		fmt.Println("NAMENODE: ACK recibido, actualiznado metadata.json")
+		actualizarMetadata(nombre_archivo)
+		conn.Write([]byte("OK\n"))
+	} else {
+		fmt.Println("NAMENODE: no recibio ACK")
+	}
+
+	fmt.Println("NAMENODE: cierrta conexion despues de ACK")
+	conn.Close()
 }
 
 
@@ -49,7 +117,6 @@ func ejecutarInfo(partes []string, conn net.Conn) {
 //FALTA IMPLEMENTAR
 }
 func administrarConexion(conn net.Conn) {
-	defer conn.Close() //ver si conviene cerrarla o esperar a que el cliente termine para enviar(que envie el ACK)
 	reader := bufio.NewReader(conn)
 
 	linea, err := reader.ReadString('\n')
@@ -66,7 +133,7 @@ func administrarConexion(conn net.Conn) {
 
 	switch comando {
 	case "put":
-		ejecutarPut(partes, conn)
+		ejecutarPut(partes, conn, reader)
 	case "get":
 		ejecutarGet(partes, conn)
 	case "ls":
