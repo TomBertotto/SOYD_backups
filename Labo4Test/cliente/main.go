@@ -7,6 +7,7 @@ import (
 	"strings"
 	"strconv"
 	"os"
+	"io"
 )
 
 
@@ -38,7 +39,7 @@ func enviarBloqueADatanode(addr string, blockID string, data[]byte) error {
 	}
 	defer conn.Close()
 
-	fmt.Fprintf(conn, "store %s\n", blockID)
+	fmt.Fprintf(conn, "store %s %d\n", blockID, len(data)) // formato <store> <nombre_b0.txt> <size>
 	_, err = conn.Write(data)
 	if err != nil {
 		fmt.Println("CLIENTE: error enviando bloque:", err)
@@ -117,6 +118,116 @@ func ejecutarPut(nombre_archivo string, addrNamenode string) {
 	fmt.Fprintf(conn, "ACK\n")
 }
 
+func pedirBloqueAlDatanode(addrDatanode, nombre_archivo string, bloque int) ([]byte, error) {
+	conn, err := net.Dial("tcp", addrDatanode)
+	if err != nil {
+		return nil, fmt.Errorf("CLIENTE: error conectando al DATANODE: %v",err)
+	}
+
+	defer conn.Close()
+
+	blockID:= fmt.Sprintf("%s_b%d.txt", nombre_archivo, bloque)
+
+	fmt.Fprintf(conn,"get %s\n", blockID) //envio el get al datanode
+
+	reader := bufio.NewReader(conn)
+
+	linea, err := reader.ReadString('\n')
+	if err != nil {
+		fmt.Println("Error leyendo linea:", err)
+		return nil, err
+	}
+	linea = strings.TrimSpace(linea)
+	
+	size, err := strconv.Atoi(linea)
+	if err != nil {
+		fmt.Println("CLIENTE: Tamaño invalido en DATANODE")
+		return nil, err
+	}
+	data := make([]byte, size)
+	_, err = io.ReadFull(reader, data)
+	if err != nil {
+		return nil, fmt.Errorf("CLIENTE: error leyendo datos del bloque: %v", err)
+	}
+
+	return data, nil
+
+}
+
+
+func ejecutarGet(nombre_archivo string, addrNamenode string) {
+	conn, err := net.Dial("tcp", addrNamenode)
+	if err != nil {
+		fmt.Println("No se pudo conectar al namenode:", err)
+		return
+	}
+
+	defer conn.Close()
+
+	fmt.Fprintf(conn, "get %s\n", nombre_archivo)
+
+	reader := bufio.NewReader(conn)
+
+	bloques := make(map[int]string)
+
+	for {
+		linea, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Println("CLIENTE: error leyendo respuesta namenode:", err)
+			return
+		}
+
+		linea = strings.TrimSpace(linea)
+		if linea == "END" { //por protocolo aseguro que namenode envia END al final
+			break
+		}
+
+		partes := strings.Fields(linea)
+
+		if len(partes) != 2 {
+			fmt.Println("CLIENTE: recibio respuesta no valida")
+			return
+		}
+
+		bloqueStr := strings.TrimPrefix(partes[0], "b")
+		bloqueNum, err := strconv.Atoi(bloqueStr)
+		if err != nil {
+			fmt.Println("CLIENTE: error procesando nro bloque:", err)
+			return
+		}
+
+		ipDatanode := partes[1]
+		bloques[bloqueNum] = ipDatanode
+
+	}
+
+	if len(bloques) == 0 {
+		fmt.Println("El archivo NO existe en el DFS")
+		return
+	}
+
+	var resultado[]byte
+
+	for i:= 0; i < len(bloques); i++ {
+		ip := bloques[i]
+		data, err := pedirBloqueAlDatanode(ip, nombre_archivo, i)
+		if err != nil {
+			fmt.Printf("CLIENTE: error obteniendo bloque %d: %v\n",i,err)
+			return
+		}
+		resultado = append(resultado, data...)//ver
+	}
+
+
+	err = os.WriteFile(nombre_archivo, resultado, 0644)
+	
+	if err != nil {
+		fmt.Println("CLIENTE: error al escribir el archivo localmente:", err)
+		return
+	}
+
+	fmt.Println("Archivo descargado con éxito: ", nombre_archivo)
+}
 
 
 func procesarComando(input string, addrNamenode string) {
@@ -137,7 +248,7 @@ func procesarComando(input string, addrNamenode string) {
 			fmt.Println("Incorrecto, uso: get <archivo>")
 			return
 		}
-		//ejecutarGet(partes[1], addrNamenode)	
+		ejecutarGet(partes[1], addrNamenode)	
 	
 	case "ls":
 		//ejecutarLsInfo(partes[0], addrNamenode)
