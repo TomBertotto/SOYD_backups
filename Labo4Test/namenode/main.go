@@ -103,10 +103,43 @@ func ejecutarPut(partes []string, conn net.Conn, reader *bufio.Reader) {
 
 
 func ejecutarGet(partes []string, conn net.Conn) {
-	nombre_archivo := partes[1]
-	fmt.Printf("NAMENODE: Recibi GET de %s\n", nombre_archivo)
-	//FALTA IMPLEMENTAR
+	if len(partes) < 2 {
+		conn.Write([]byte("NAMENODE: ERROR falta nombre archivo\n"))
+		conn.Write([]byte("END\N"))
+		return
+	}
 
+	nombre_archivo := partes[1]
+	fmt.Println("NAMENODE: Recibi GET de archivo %s\n", nombre_archivo)
+
+	contenido, err := os.ReadFile("metadata.json")
+	if err != nil {
+		conn.Write([]byte("NAMENODE: ERROR leyendo metadata\n"))
+		conn.Write([]byte("END\N"))
+		return
+	}
+
+	var metadata map[string][]map[string]string
+	err = json.Unmarshal(contenido, &metadata)
+	if err != nil {
+		conn.Write([]byte("NAMENODE: ERROR parseando metadata\n"))
+		conn.Write([]byte("END\N"))
+		return
+	}
+
+	bloques, exito := metadata[nombre_archivo]
+
+	if !exito {
+		conn.Write([]byte("NAMENODE: ERROR archivo NO encontrado en metadata\n"))
+		conn.Write([]byte("END\N"))
+		return		
+	}
+
+	for _, entrada := bloques {
+		linea := fmt.Sprintf("%s %s\n", entry["block"], entry["node"])
+		conn.Write([]byte(linea))
+	}
+	conn.Write([]byte, ("END\n"))
 }
 
 func ejecutarLS(conn net.Conn) {
