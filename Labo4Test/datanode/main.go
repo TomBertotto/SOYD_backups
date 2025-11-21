@@ -62,16 +62,20 @@ func administrarConexion(conn net.Conn) {
 	
 	comando := partes[0]
 	blockID := partes[1]
-	sizeStr := strings.TrimSpace(partes[2])
-	sizeStr = strings.TrimSuffix(sizeStr, "\r")
-	size, err := strconv.Atoi(sizeStr)
-	if err != nil {
-		fmt.Println("DATANODE: error procesando SIZE")
-		return
-	}
 
 	switch comando {
 	case "store":
+		if len(partes) < 3 {
+			fmt.Println("DATANODE: error en cantidad de argumentos STORE")
+			return
+		}
+		sizeStr := strings.TrimSpace(partes[2])
+		sizeStr = strings.TrimSuffix(sizeStr, "\r")
+		size, err := strconv.Atoi(sizeStr)
+		if err != nil {
+			fmt.Println("DATANODE: error procesando SIZE")
+			return
+		}
 		almacenarBloque(reader, blockID, size)
 	case "read":
 		enviarBloque(conn, blockID)
