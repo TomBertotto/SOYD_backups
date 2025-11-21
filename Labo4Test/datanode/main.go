@@ -49,6 +49,18 @@ func enviarBloque(conn net.Conn, blockID string) {
 	fmt.Println("Bloque ", blockID, "enviado")
 }
 
+func eliminarBloque(conn net.Conn, blockID string) {
+	ruta := bloquesDir + blockID
+	err := os.Remove(ruta)
+	if err != nil {
+		fmt.Println("DATANODE: error eliminando bloque:", blockID, err)
+		fmt.Fprintf(conn, "ERROR\n")
+		return
+	}
+	fmt.Println("DATANODE: bloque eliminado:", blockID)
+	fmt.Fprintf(conn, "OK\n")
+}
+
 func administrarConexion(conn net.Conn) {
 	
 	defer conn.Close()
@@ -79,6 +91,8 @@ func administrarConexion(conn net.Conn) {
 		almacenarBloque(reader, blockID, size)
 	case "read":
 		enviarBloque(conn, blockID)
+	case "delete":
+		eliminarBloque(conn, blockID)
 	}
 }
 

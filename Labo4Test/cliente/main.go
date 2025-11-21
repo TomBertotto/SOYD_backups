@@ -299,6 +299,71 @@ func ejecutarLS(comando string, addrNamenode string) {
 
 }
 
+func ejecutarRM(nombre_archivo string, addrNamenode string) {
+	conn, err := net.Dial("tcp", addrNamenode)
+	if err != nil {
+		fmt.Println("CLIENTE: error conectando al NAMENODE:", err)
+		return
+	}
+
+	defer conn.Close()
+
+	fmt.Fprintf(conn, "rm %s\n", nombre_archivo)
+	reader := bufio.NewReader(conn)
+
+	bloques := make(map[int]string)
+
+	for {
+		linea, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Println("CLIENTE: error leyendo respuesta RM:", err)
+			return
+		}
+
+		linea = strings.TrimSpace(linea)
+
+		if linea == "END" {
+			break
+		}
+
+		if linea == "NO_EXISTE" {
+			fmt.Println("CLIENTE: archivo no encontrado en el DFS")
+			return
+		}
+
+		partes := strings.Fields(linea)
+		if len(partes) != 2 {
+			continue
+		}
+
+		bloqueStr := strings.TrimPrefix(partes[0], "b")
+		bloqueNum, _ := strconv.Atoi(bloqueStr)
+		bloques[bloqueNum] = partes[1]
+	}
+
+	for bloque, ip := range bloques {
+		blockID := generarID(nombre_archivo, bloque)
+
+		fmt.Printf("CLIENTE: pidiendo borrar bloque %s en %s\n", blockID, ip)
+
+		connDN, err := net.Dial("tcp", ip)
+		if err != nil {
+			fmt.Println("CLIENTE: error conectando al DATANODE:", ip)
+			return
+		}
+		fmt.Fprintf(connDN, "delete %s\n", blockID)
+		connDN.Close()
+	}
+
+	fmt.Fprintf(conn, "ACK\n")
+
+	linea, _ := reader.ReadString('\n')
+	linea = strings.TrimSpace(linea)
+	if linea == "OK" {
+		fmt.Println("CLIENTE: archivo eliminado exitosamente del DFS")
+	}
+}
+
 func procesarComando(input string, addrNamenode string) {
 	partes := strings.Fields(input)
 	comando := strings.ToLower(partes[0])
@@ -327,7 +392,12 @@ func procesarComando(input string, addrNamenode string) {
 			return
 		}
 		ejecutarInfo(partes[1], addrNamenode)
-		
+	case "rm":
+		if len(partes) < 2 {
+			fmt.Println("Incorrecto, uso: rm <archivo>")
+			return
+		}
+		ejecutarRM(partes[1], addrNamenode)
 	default: fmt.Println("Comando no válido:", comando)
 	}
 }

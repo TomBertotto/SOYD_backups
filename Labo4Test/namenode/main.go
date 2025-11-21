@@ -187,6 +187,55 @@ func ejecutarInfo(partes []string, conn net.Conn) {
 	conn.Write([]byte("END\n"))
 }
 
+func ejecutarRM(partes []string, conn net.Conn, reader *bufio.Reader) {
+	if len(partes) < 2 {
+		conn.Write([]byte("NAMENODE: Error falta nombre archivo\nEND\n"))
+		return
+	}
+
+	nombre_archivo := partes[1]
+
+	contenido, err := os.ReadFile("metadata.json")
+	if err != nil {
+		conn.Write([]byte("ERROR leyenedo metadata\nEND\n"))
+		return
+	}
+
+	metadata := make(map[string][]map[string]string)
+	json.Unmarshal(contenido, &metadata)
+
+	bloques, existe := metadata[nombre_archivo]
+	if !existe {
+		conn.Write([]byte("NO_EXISTE\nEND\n"))
+		return
+	}
+
+	for _, entrada := range bloques {
+		linea := fmt.Sprintf("%s %s\n", entrada["block"], entrada["node"])
+		conn.Write([]byte(linea))
+	}
+	conn.Write([]byte("END\n"))
+
+	ack, err := reader.ReadString('\n')
+	if err != nil {
+		fmt.Println("NAMENODE: error leyendo ACK:", err)
+		return
+	}
+
+	ack = strings.TrimSpace(ack)
+
+	if ack == "ACK" {
+		delete(metadata, nombre_archivo)
+		nuevo, _ := json.MarshalIndent(metadata, "", " ")
+		os.WriteFile("metadata.json", nuevo, 0644)
+
+		fmt.Println("NAMENODE: metadata.json actualizado (archivo eliminado)")
+		conn.Write([]byte("OK\n"))
+	}
+
+	conn.Close()//chequear
+}
+
 func administrarConexion(conn net.Conn) {
 	reader := bufio.NewReader(conn)
 
@@ -211,6 +260,8 @@ func administrarConexion(conn net.Conn) {
 		ejecutarLS(conn)
 	case "info":
 		ejecutarInfo(partes, conn)
+	case "rm":
+		ejecutarRM(partes, conn, reader)
 	default: conn.Write([]byte("Comando no valido\n"))//a la defensiva, no deberia pasar este caso
 	}
 
