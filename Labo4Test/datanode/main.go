@@ -35,13 +35,16 @@ func almacenarBloque(reader *bufio.Reader, blockID string, size int) {
 	fmt.Println("Bloque ", blockID, " almacenado")
 }
 
-func enviarBloque(conn net.Conn, blockID string, size int) {
+func enviarBloque(conn net.Conn, blockID string) {
 	ruta := bloquesDir + blockID
 	data, err := os.ReadFile(ruta)
 	if err != nil {
 		fmt.Println("DATANODE: error leyendo bloque con READ, bloque:", blockID)
 		return
 	}
+	//envio el tamanio al cliente
+	fmt.Fprintf(conn, "%d\n", len(data))
+
 	conn.Write(data)
 	fmt.Println("Bloque ", blockID, "enviado")
 }
@@ -52,7 +55,7 @@ func administrarConexion(conn net.Conn) {
 	reader := bufio.NewReader(conn)
 	linea, err := reader.ReadString('\n')
 	partes := strings.Fields(linea)
-	if err != nil || len(partes) < 3 {
+	if err != nil || len(partes) < 2 {
 		fmt.Println("DATANODE: error leyendo comando")
 		return
 	}
@@ -71,7 +74,7 @@ func administrarConexion(conn net.Conn) {
 	case "store":
 		almacenarBloque(reader, blockID, size)
 	case "read":
-		enviarBloque(conn, blockID, size)
+		enviarBloque(conn, blockID)
 	}
 }
 

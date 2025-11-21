@@ -229,6 +229,17 @@ func ejecutarGet(nombre_archivo string, addrNamenode string) {
 	fmt.Println("Archivo descargado con éxito: ", nombre_archivo)
 }
 
+func ejecutarLS(comando string, addrNamenode string) {
+	conn, err := net.Dial("tcp", addrNamenode)
+	if err != nil {
+		fmt.Println("CLIENTE: error conectando al NAMENODE:", err)
+		return
+	}
+	defer conn.Close()
+	
+	fmt.Fprintf(conn, "%s\n", comando)
+
+}
 
 func procesarComando(input string, addrNamenode string) {
 	partes := strings.Fields(input)
@@ -251,13 +262,13 @@ func procesarComando(input string, addrNamenode string) {
 		ejecutarGet(partes[1], addrNamenode)	
 	
 	case "ls":
-		//ejecutarLsInfo(partes[0], addrNamenode)
+		//ejecutarLS(partes[0], addrNamenode)
 	case "info":
 		if len(partes) < 2 {
 			fmt.Println("Incorrecto, uso: info <archivo>")
 			return
 		}
-		//ejecutarLsInfo(partes[1], addrNamenode)
+		//ejecutarInfo(partes[1], addrNamenode)
 		
 	default: fmt.Println("Comando no válido:", comando)
 	}

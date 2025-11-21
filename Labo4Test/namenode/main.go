@@ -12,8 +12,8 @@ import (
 )
 
 var datanodes = []string {//hardcodeados
-	"192.168.0.10:5000",
-	"192.168.0.11:5001",
+	"192.168.0.5:5000",
+	"192.168.0.24:5000",
 }
 
 var asignaciones = make(map[string][]struct {
@@ -105,7 +105,7 @@ func ejecutarPut(partes []string, conn net.Conn, reader *bufio.Reader) {
 func ejecutarGet(partes []string, conn net.Conn) {
 	if len(partes) < 2 {
 		conn.Write([]byte("NAMENODE: ERROR falta nombre archivo\n"))
-		conn.Write([]byte("END\N"))
+		conn.Write([]byte("END\n"))
 		return
 	}
 
@@ -115,7 +115,7 @@ func ejecutarGet(partes []string, conn net.Conn) {
 	contenido, err := os.ReadFile("metadata.json")
 	if err != nil {
 		conn.Write([]byte("NAMENODE: ERROR leyendo metadata\n"))
-		conn.Write([]byte("END\N"))
+		conn.Write([]byte("END\n"))
 		return
 	}
 
@@ -123,7 +123,7 @@ func ejecutarGet(partes []string, conn net.Conn) {
 	err = json.Unmarshal(contenido, &metadata)
 	if err != nil {
 		conn.Write([]byte("NAMENODE: ERROR parseando metadata\n"))
-		conn.Write([]byte("END\N"))
+		conn.Write([]byte("END\n"))
 		return
 	}
 
@@ -131,15 +131,15 @@ func ejecutarGet(partes []string, conn net.Conn) {
 
 	if !exito {
 		conn.Write([]byte("NAMENODE: ERROR archivo NO encontrado en metadata\n"))
-		conn.Write([]byte("END\N"))
+		conn.Write([]byte("END\n"))
 		return		
 	}
 
-	for _, entrada := bloques {
-		linea := fmt.Sprintf("%s %s\n", entry["block"], entry["node"])
+	for _, entrada := range bloques {
+		linea := fmt.Sprintf("%s %s\n", entrada["block"], entrada["node"])
 		conn.Write([]byte(linea))
 	}
-	conn.Write([]byte, ("END\n"))
+	conn.Write([]byte("END\n"))
 }
 
 func ejecutarLS(conn net.Conn) {
