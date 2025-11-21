@@ -110,7 +110,7 @@ func ejecutarGet(partes []string, conn net.Conn) {
 	}
 
 	nombre_archivo := partes[1]
-	fmt.Println("NAMENODE: Recibi GET de archivo %s\n", nombre_archivo)
+	fmt.Println("NAMENODE: Recibi GET de archivo\n", nombre_archivo)
 
 	contenido, err := os.ReadFile("metadata.json")
 	if err != nil {
@@ -143,12 +143,50 @@ func ejecutarGet(partes []string, conn net.Conn) {
 }
 
 func ejecutarLS(conn net.Conn) {
-//FALTA IMPLEMENTAR
+	contenido, err := os.ReadFile("metadata.json")
+	if err != nil {
+		conn.Write([]byte("NAMENODE: Error leyendo METADATA\n"))
+		return
+	}
+
+	metadata := make(map[string][]map[string]string)
+	json.Unmarshal(contenido, &metadata)
+
+	for nombre := range metadata {
+		conn.Write([]byte(nombre + "\n"))
+	}
+
+	conn.Write([]byte("END\n"))
+
 }
 
 func ejecutarInfo(partes []string, conn net.Conn) {
-//FALTA IMPLEMENTAR
+	nombre_archivo := partes[1]
+	contenido, err := os.ReadFile("metadata.json")
+	if err != nil {
+		conn.Write([]byte("NAMENODE: error leyendo METADATA\n"))
+		conn.Write([]byte("END\n"))
+		return
+	}
+
+	metadata := make(map[string][]map[string]string)
+	json.Unmarshal(contenido, &metadata)
+
+	bloques, existe := metadata[nombre_archivo]
+	if !existe {
+		conn.Write([]byte("NO_EXISTE\n"))
+		conn.Write([]byte("END\n"))
+		return
+	}
+
+	for _, entrada := range bloques {
+		linea := fmt.Sprintf("%s %s\n", entrada["block"], entrada["node"])
+		conn.Write([]byte(linea))
+	}
+
+	conn.Write([]byte("END\n"))
 }
+
 func administrarConexion(conn net.Conn) {
 	reader := bufio.NewReader(conn)
 

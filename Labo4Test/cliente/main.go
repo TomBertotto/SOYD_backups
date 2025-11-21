@@ -229,6 +229,48 @@ func ejecutarGet(nombre_archivo string, addrNamenode string) {
 	fmt.Println("Archivo descargado con éxito: ", nombre_archivo)
 }
 
+
+
+func ejecutarInfo(nombre_archivo string, addrNamenode string) {
+	conn, err := net.Dial("tcp", addrNamenode)
+	if err != nil {
+		fmt.Println("CLIENTE: error conectandose al NAMENODE:", err)
+		return
+	}
+	defer conn.Close()
+
+	fmt.Fprintf(conn, "info %s\n", nombre_archivo)
+
+	reader := bufio.NewReader(conn)
+
+	fmt.Printf("Información del archivo %s: \n", nombre_archivo)
+
+	for {
+		linea, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Println("CLIENTE: error leyendo linea INFO:", err)
+			return
+		}
+
+		linea = strings.TrimSpace(linea)
+
+		if linea == "END" {
+			break
+		}
+
+		if linea == "NO_EXISTE" {
+			fmt.Println("El archivo NO está en el DFS")
+			return
+		}
+
+		partes := strings.Fields(linea)
+		if len(partes) == 2 {
+			fmt.Println(" ----- Bloque %s en %s\n", partes[0], partes[1])
+		}
+	}
+}
+
+
 func ejecutarLS(comando string, addrNamenode string) {
 	conn, err := net.Dial("tcp", addrNamenode)
 	if err != nil {
@@ -238,6 +280,22 @@ func ejecutarLS(comando string, addrNamenode string) {
 	defer conn.Close()
 	
 	fmt.Fprintf(conn, "%s\n", comando)
+	reader := bufio.NewReader(conn)
+
+	fmt.Println("Archivos en el DFS:")
+
+	for {
+		linea, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Println("CLIENTE: error leyendo linea LS", err)
+			return
+		}
+		linea = strings.TrimSpace(linea)
+		if linea == "END" {
+			break
+		}
+		fmt.Println(" -----", linea)
+	}
 
 }
 
@@ -262,13 +320,13 @@ func procesarComando(input string, addrNamenode string) {
 		ejecutarGet(partes[1], addrNamenode)	
 	
 	case "ls":
-		//ejecutarLS(partes[0], addrNamenode)
+		ejecutarLS(comando, addrNamenode)
 	case "info":
 		if len(partes) < 2 {
 			fmt.Println("Incorrecto, uso: info <archivo>")
 			return
 		}
-		//ejecutarInfo(partes[1], addrNamenode)
+		ejecutarInfo(partes[1], addrNamenode)
 		
 	default: fmt.Println("Comando no válido:", comando)
 	}
