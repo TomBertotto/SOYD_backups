@@ -265,7 +265,7 @@ func ejecutarInfo(nombre_archivo string, addrNamenode string) {
 
 		partes := strings.Fields(linea)
 		if len(partes) == 2 {
-			fmt.Println(" ----- Bloque %s en %s\n", partes[0], partes[1])
+			fmt.Printf(" ----- Bloque %s en %s\n", partes[0], partes[1])
 		}
 	}
 }
@@ -346,6 +346,8 @@ func main() {
 	fmt.Println("Comandos: put <archivo>, get<archivo>, ls, info <archivo>, exit")
 
 	for {
+		fmt.Println()
+		fmt.Println()
 		fmt.Print("dfs> ")
 		
 		input, err := reader.ReadString('\n')
