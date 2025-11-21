@@ -128,7 +128,7 @@ func pedirBloqueAlDatanode(addrDatanode, nombre_archivo string, bloque int) ([]b
 
 	blockID:= fmt.Sprintf("%s_b%d.txt", nombre_archivo, bloque)
 
-	fmt.Fprintf(conn,"get %s\n", blockID) //envio el get al datanode
+	fmt.Fprintf(conn,"read %s\n", blockID) //envio el read al datanode
 
 	reader := bufio.NewReader(conn)
 
