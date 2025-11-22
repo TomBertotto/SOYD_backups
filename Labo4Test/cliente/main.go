@@ -155,7 +155,7 @@ func pedirBloqueAlDatanode(addrDatanode, nombre_archivo string, bloque int) ([]b
 }
 
 
-func ejecutarGet(nombre_archivo string, addrNamenode string) {
+func ejecutarGetCat(nombre_archivo string, addrNamenode string, comando string) {
 	conn, err := net.Dial("tcp", addrNamenode)
 	if err != nil {
 		fmt.Println("No se pudo conectar al namenode:", err)
@@ -218,15 +218,20 @@ func ejecutarGet(nombre_archivo string, addrNamenode string) {
 		resultado = append(resultado, data...)//ver
 	}
 
+	if comando != "cat" {
+		err = os.WriteFile(nombre_archivo, resultado, 0644)
+		
+		if err != nil {
+			fmt.Println("CLIENTE: error al escribir el archivo localmente:", err)
+			return
+		}
 
-	err = os.WriteFile(nombre_archivo, resultado, 0644)
-	
-	if err != nil {
-		fmt.Println("CLIENTE: error al escribir el archivo localmente:", err)
+		fmt.Println("Archivo descargado con éxito: ", nombre_archivo)
+	} else {
+		fmt.Print(string(resultado))
+		fmt.Println()
 		return
 	}
-
-	fmt.Println("Archivo descargado con éxito: ", nombre_archivo)
 }
 
 
@@ -382,7 +387,7 @@ func procesarComando(input string, addrNamenode string) {
 			fmt.Println("Incorrecto, uso: get <archivo>")
 			return
 		}
-		ejecutarGet(partes[1], addrNamenode)	
+		ejecutarGetCat(partes[1], addrNamenode, comando)	
 	
 	case "ls":
 		ejecutarLS(comando, addrNamenode)
@@ -398,6 +403,12 @@ func procesarComando(input string, addrNamenode string) {
 			return
 		}
 		ejecutarRM(partes[1], addrNamenode)
+	case "cat":
+		if len(partes) < 2 {
+			fmt.Println("Incorrecto, uso: cat <archivo>")
+			return
+		}
+		ejecutarGetCat(partes[1], addrNamenode, comando)
 	default: fmt.Println("Comando no válido:", comando)
 	}
 }

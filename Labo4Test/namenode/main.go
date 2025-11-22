@@ -46,6 +46,46 @@ func actualizarMetadata(nombre_archivo string) {
 	fmt.Println("NAMENODE: metadata.json actualizado")
 }
 
+func cargarMetadata() map[string][]map[string]string {
+	metadata := make(map[string][]map[string]string)
+	contenido, err := os.ReadFile("metadata.json")
+	if err != nil {
+		return metadata
+	}
+	json.Unmarshal(contenido, &metadata)
+	return metadata
+}
+
+func obtenerCargaDatanodes(metadata map[string][]map[string]string, datanodes []string) map[string]int {
+	carga := make(map[string]int)
+
+	for _, dn := range datanodes {
+		carga[dn] = 0
+	}
+
+	for _, lista := range metadata {
+		for _, entrada := range lista {
+			dn := entrada["node"]
+			carga[dn]++
+		}
+	}
+
+	return carga
+
+}
+
+func elegirDatanodeMenorCarga(carga map[string]int) string {
+	var elegido string
+	min := int(^uint(0) >> 1 ) //i.e. MAX INT!
+
+	for nodo, cant := range carga {
+		if cant < min {
+			min = cant
+			elegido = nodo
+		}
+	}
+	return elegido
+}
 
 func ejecutarPut(partes []string, conn net.Conn, reader *bufio.Reader) {
 	nombre_archivo := partes[1]
@@ -58,24 +98,28 @@ func ejecutarPut(partes []string, conn net.Conn, reader *bufio.Reader) {
 
 	fmt.Printf("NAMENODE: Recibi PUT %s con %d bloques\n", nombre_archivo, cant_bloques)
 
+	metadata := cargarMetadata()
+	carga := obtenerCargaDatanodes(metadata, datanodes)
+
 	asignaciones[nombre_archivo] = []struct {
 		Bloque string
 		Node string
 	}{}
 
 	for i:= 0; i < cant_bloques; i++ {
-		dn := datanodes[i % len(datanodes)] //tipo RoundRobin
 		
+		elegido := elegirDatanodeMenorCarga(carga)
+		carga[elegido]++
 		bloque_nro := fmt.Sprintf("b%d", i)
 		asignaciones[nombre_archivo] = append(
 			asignaciones[nombre_archivo],
 			struct{ Bloque, Node string }{
 				Bloque: bloque_nro,
-				Node: dn,
+				Node: elegido,
 		},
 		)
 		
-		linea := fmt.Sprintf("b%d %s\n", i, dn)
+		linea := fmt.Sprintf("b%d %s\n", i, elegido)
 		conn.Write([]byte(linea))
 	}
 
