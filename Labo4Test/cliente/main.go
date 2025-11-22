@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"os"
 	"io"
+	"time"
 )
 
 
@@ -30,27 +31,50 @@ func dividirEnBloques(archivo []byte) [][]byte {
 	return bloques
 }
 
-func enviarBloqueADatanode(addr string, blockID string, data[]byte) error {
+func logear(msj string) {
+	os.MkdirAll("logs", 0755)
+	archivo, err := os.OpenFile("logs/cliente_log.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println("ERROR logeando")
+		return
+	}
+	defer archivo.Close()
 	
+	timestamp := time.Now().Format("02/01 15:04")
+	tiempoStr := fmt.Sprintf("[%s] %s\n", timestamp, msj)
+
+	archivo.WriteString(tiempoStr)	
+}
+
+func enviarBloqueADatanode(addr string, blockID string, data[]byte) error {
+	logear(fmt.Sprintf("CLIENTE: conectando con DATANODE %s", addr))
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
+		logear(fmt.Sprintf("CLIENTE: error al conectar a DATANODE"))
 		fmt.Println("CLIENTE: error al conectar a DATANODE:", err)
 		return err
 	}
 	defer conn.Close()
 	
-	fmt.Fprintf(conn, "store %s %d\n", blockID, len(data)) // formato <store> <nombre_b0.txt> <size>
+	fmt.Fprintf(conn, "store %s %d\n", blockID, len(data)) // formato <store> <nombre_b0.txt> <size>	
+	logear(fmt.Sprintf("CLIENTE -> DATANODE %s: store %s (%d bytes)", addr, blockID, len(data)))
+
 	_, err = conn.Write(data)
 	if err != nil {
+		logear(fmt.Sprintf("CLIENTE: error enviando bloque"))	
 		fmt.Println("CLIENTE: error enviando bloque:", err)
 		return err
 	}
+
+	logear(fmt.Sprintf("CLIENTE: bloque %s enviado a %s", blockID, addr))
 	return nil
 }
+
 
 func ejecutarPut(nombre_archivo string, addrNamenode string) {
 	archivo, err := os.ReadFile(nombre_archivo)
 	if err != nil {
+		logear(fmt.Sprintf("CLIENTE: error leyendo archivo local"))
 		fmt.Println("Error abriendo archivo:", err)
 		return
 	}
@@ -66,11 +90,13 @@ func ejecutarPut(nombre_archivo string, addrNamenode string) {
 
 	conn, err := net.Dial("tcp", addrNamenode) //me conecto al namenode
 	if err != nil {
+		logear(fmt.Sprintf("CLIENTE: error conectando al NAMENODE"))
 		fmt.Println("Error conectado con el namenode:", err)
 		return
 	}
 	defer conn.Close()
-
+	logear(fmt.Sprintf("CLIENTE conectado al NAMENODE"))
+	
 	conn.Write([]byte(msg))
 	
 	fmt.Println("Cliente esperando asignacion de datanodes...")
@@ -81,6 +107,7 @@ func ejecutarPut(nombre_archivo string, addrNamenode string) {
 	for {
 		linea, err := reader.ReadString('\n')
 		if err != nil {
+			logear(fmt.Sprintf("CLIENTE: error al recibir del namenode"))
 			fmt.Println("Error al recibir del namenode")
 			break
 		}
@@ -90,6 +117,8 @@ func ejecutarPut(nombre_archivo string, addrNamenode string) {
 			break
 		}
 
+		logear(fmt.Sprintf("CLIENTE <- NAMENODE: " + linea))
+		
 		fmt.Println("---", linea, "---")
 		partes := strings.Fields(linea)
 		if len(partes) == 2 {
@@ -105,6 +134,7 @@ func ejecutarPut(nombre_archivo string, addrNamenode string) {
 
 	for bloqueID, addrDatanode := range asignaciones_bloques {
 		data := bloques[bloqueID]
+		logear(fmt.Sprintf("Enviando bloque %d a %s", bloqueID, addrDatanode))
 		fmt.Printf("Enviando bloque %d a %s\n", bloqueID, addrDatanode)
 		id_bloque := generarID(nombre_archivo, bloqueID)//CONVENCION: tomo que el id es nombre_archivo_b0.txt, nombre_archivo_b1.txt...
 		err := enviarBloqueADatanode(addrDatanode, id_bloque, data) //me conecto a los datanodes
@@ -121,6 +151,7 @@ func ejecutarPut(nombre_archivo string, addrNamenode string) {
 func pedirBloqueAlDatanode(addrDatanode, nombre_archivo string, bloque int) ([]byte, error) {
 	conn, err := net.Dial("tcp", addrDatanode)
 	if err != nil {
+		logear(fmt.Sprintf("CLIENTE: error conectando al DATANODE"))
 		return nil, fmt.Errorf("CLIENTE: error conectando al DATANODE: %v",err)
 	}
 
@@ -132,8 +163,10 @@ func pedirBloqueAlDatanode(addrDatanode, nombre_archivo string, bloque int) ([]b
 
 	reader := bufio.NewReader(conn)
 
+	logear(fmt.Sprintf("CLIENTE -> DATANODE %s", addrDatanode))
 	linea, err := reader.ReadString('\n')
 	if err != nil {
+		logear(fmt.Sprintf("ERROR leyendo linea"))
 		fmt.Println("Error leyendo linea:", err)
 		return nil, err
 	}
@@ -147,6 +180,7 @@ func pedirBloqueAlDatanode(addrDatanode, nombre_archivo string, bloque int) ([]b
 	data := make([]byte, size)
 	_, err = io.ReadFull(reader, data)
 	if err != nil {
+		logear(fmt.Sprintf("CLIENTE: error leyendo datos del bloque"))
 		return nil, fmt.Errorf("CLIENTE: error leyendo datos del bloque: %v", err)
 	}
 
@@ -158,10 +192,12 @@ func pedirBloqueAlDatanode(addrDatanode, nombre_archivo string, bloque int) ([]b
 func ejecutarGetCat(nombre_archivo string, addrNamenode string, comando string) {
 	conn, err := net.Dial("tcp", addrNamenode)
 	if err != nil {
+		logear(fmt.Sprintf("No se pudo conectar al namenode"))
 		fmt.Println("No se pudo conectar al namenode:", err)
 		return
 	}
-
+	
+	logear(fmt.Sprintf("CLIENTE -> NAMENODE: get %s", nombre_archivo))
 	defer conn.Close()
 
 	fmt.Fprintf(conn, "get %s\n", nombre_archivo)
@@ -198,7 +234,8 @@ func ejecutarGetCat(nombre_archivo string, addrNamenode string, comando string) 
 
 		ipDatanode := partes[1]
 		bloques[bloqueNum] = ipDatanode
-
+		logear(fmt.Sprintf("CLIENTE <- NAMENODE: " + linea))
+		
 	}
 
 	if len(bloques) == 0 {
@@ -226,6 +263,7 @@ func ejecutarGetCat(nombre_archivo string, addrNamenode string, comando string) 
 			return
 		}
 
+		logear(fmt.Sprintf("Archivo %s descargado con éxito", nombre_archivo))
 		fmt.Println("Archivo descargado con éxito: ", nombre_archivo)
 	} else {
 		fmt.Print(string(resultado))
@@ -307,6 +345,7 @@ func ejecutarLS(comando string, addrNamenode string) {
 func ejecutarRM(nombre_archivo string, addrNamenode string) {
 	conn, err := net.Dial("tcp", addrNamenode)
 	if err != nil {
+		logear(fmt.Sprintf("CLIENTE: error conectando al NAMENODE"))
 		fmt.Println("CLIENTE: error conectando al NAMENODE:", err)
 		return
 	}
@@ -353,6 +392,7 @@ func ejecutarRM(nombre_archivo string, addrNamenode string) {
 
 		connDN, err := net.Dial("tcp", ip)
 		if err != nil {
+			logear(fmt.Sprintf("CLIENTE: error conectando al DATANODE"))
 			fmt.Println("CLIENTE: error conectando al DATANODE:", ip)
 			return
 		}
@@ -365,6 +405,7 @@ func ejecutarRM(nombre_archivo string, addrNamenode string) {
 	linea, _ := reader.ReadString('\n')
 	linea = strings.TrimSpace(linea)
 	if linea == "OK" {
+		logear(fmt.Sprintf("CLIENTE: archivo eliminado exitosamente del DFS"))
 		fmt.Println("CLIENTE: archivo eliminado exitosamente del DFS")
 	}
 }
@@ -372,6 +413,7 @@ func ejecutarRM(nombre_archivo string, addrNamenode string) {
 func procesarComando(input string, addrNamenode string) {
 	partes := strings.Fields(input)
 	comando := strings.ToLower(partes[0])
+	logear(fmt.Sprintf("SE INGRESO COMANDO: %s", comando))
 
 	switch comando {
 	case "put": 
@@ -420,6 +462,7 @@ func main() {
 		return
 	}
 
+	logear(fmt.Sprintf("CLIENTE: comienza el programa"))
 	addrNamenode := os.Args[1]
 	reader:= bufio.NewReader(os.Stdin)
 
@@ -444,6 +487,7 @@ func main() {
 		}
 
 		if input == "exit" {
+			logear(fmt.Sprintf("CLIENTE: salida del programa"))
 			fmt.Println("Saliendo del cliente...")
 			return
 		}

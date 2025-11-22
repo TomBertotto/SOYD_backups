@@ -9,6 +9,7 @@ import (
 	"strings"
 	"os"
 	"strconv"
+	"time"
 )
 
 var datanodes = []string {//hardcodeados
@@ -44,6 +45,21 @@ func actualizarMetadata(nombre_archivo string) {
 	nuevo, _ := json.MarshalIndent(metadata, "", " ")
 	os.WriteFile("metadata.json", nuevo, 0644)
 	fmt.Println("NAMENODE: metadata.json actualizado")
+}
+
+func logear(msj string) {
+	os.MkdirAll("logs", 0755)
+	archivo, err := os.OpenFile("logs/namenode_log.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println("ERROR logeando")
+		return
+	}
+	defer archivo.Close()
+	
+	timestamp := time.Now().Format("02/01 15:04")
+	tiempoStr := fmt.Sprintf("[%s] %s\n", timestamp, msj)
+
+	archivo.WriteString(tiempoStr)	
 }
 
 func cargarMetadata() map[string][]map[string]string {

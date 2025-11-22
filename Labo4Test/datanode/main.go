@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"strconv"
+	"time"
 )
 
 const bloquesDir = "./blocks/"
@@ -61,6 +62,20 @@ func eliminarBloque(conn net.Conn, blockID string) {
 	fmt.Fprintf(conn, "OK\n")
 }
 
+func logear(msj string) {
+	os.MkdirAll("logs", 0755)
+	archivo, err := os.OpenFile("logs/datanode_log.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println("ERROR logeando")
+		return
+	}
+	defer archivo.Close()
+	
+	timestamp := time.Now().Format("02/01 15:04")
+	tiempoStr := fmt.Sprintf("[%s] %s\n", timestamp, msj)
+
+	archivo.WriteString(tiempoStr)	
+}
 func administrarConexion(conn net.Conn) {
 	
 	defer conn.Close()
