@@ -50,6 +50,7 @@ func almacenarBloque(reader *bufio.Reader, blockID string, size int) {
 	}
 
 	archivo.Write(buffer)
+	logear("Bloque almacenado: " + blockID)
 	fmt.Println("Bloque ", blockID, " almacenado")
 }
 
@@ -65,6 +66,7 @@ func enviarBloque(conn net.Conn, blockID string) {
 	fmt.Fprintf(conn, "%d\n", len(data))
 
 	conn.Write(data)
+	logear("Se envio bloque al data node, bloque: " + blockID)
 	fmt.Println("Bloque ", blockID, "enviado")
 }
 

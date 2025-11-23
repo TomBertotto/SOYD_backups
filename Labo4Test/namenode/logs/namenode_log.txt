@@ -1,1 +1,20 @@
 [23/11 14:50] NAMENODE escuchando en puerto 8000
+[23/11 15:08] NAMENODE escuchando en puerto 8000
+[23/11 15:08] PUT recibido: archivo_local.txt con 6 bloques
+[23/11 15:08] ACK RECIBIDO: actualizando metadata.json
+[23/11 15:08] Se cierra la conexion
+[23/11 15:08] PUT recibido: archivo3bloques.txt con 3 bloques
+[23/11 15:08] ACK RECIBIDO: actualizando metadata.json
+[23/11 15:08] Se cierra la conexion
+[23/11 15:08] PUT recibido: archivo3bloques_diferente.txt con 3 bloques
+[23/11 15:08] ACK RECIBIDO: actualizando metadata.json
+[23/11 15:08] Se cierra la conexion
+[23/11 15:08] GET recibido, archivo: archivo3bloques.txt
+[23/11 15:08] GET recibido, archivo: archivo3bloques_diferente.txt
+[23/11 15:09] se actualizo metadata.json --- archivo eliminado
+[23/11 15:09] GET recibido, archivo: archivo_local.txt
+[23/11 15:09] ARCHIVO NO encontrado en metadata
+[23/11 15:09] GET recibido, archivo: archivo3bloques.txt
+[23/11 15:09] se actualizo metadata.json --- archivo eliminado
+[23/11 15:11] se actualizo metadata.json --- archivo eliminado
+[23/11 15:14] NAMENODE escuchando en puerto 8000

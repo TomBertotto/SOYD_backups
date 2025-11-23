@@ -244,7 +244,7 @@ func ejecutarInfo(partes []string, conn net.Conn) {
 
 	bloques, existe := metadata[nombre_archivo]
 	if !existe {
-		logear("El archivo no existe")
+		logear("El archivo no existe: " + nombre_archivo)
 		conn.Write([]byte("NO_EXISTE\n"))
 		conn.Write([]byte("END\n"))
 		return
