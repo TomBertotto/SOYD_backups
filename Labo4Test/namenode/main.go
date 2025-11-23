@@ -153,7 +153,7 @@ func ejecutarPut(partes []string, conn net.Conn, reader *bufio.Reader) {
 
 	if ack_respuesta == "ACK" {
 		logear("ACK RECIBIDO: actualizando metadata.json")
-		fmt.Println("NAMENODE: ACK recibido, actualiznado metadata.json")
+		fmt.Println("NAMENODE: ACK recibido, actualizando metadata.json")
 		actualizarMetadata(nombre_archivo)
 		conn.Write([]byte("OK\n"))
 	} else if ack_respuesta == "ERROR" {

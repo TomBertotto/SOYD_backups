@@ -141,6 +141,7 @@ func ejecutarPut(nombre_archivo string, addrNamenode string) {
 		if err != nil {
 			logear("ERROR enviando BLOQUE: PUT cancelado")
 			fmt.Printf("CLIENTE: error enviando el bloque %d -> %s\n", bloqueID, addrDatanode)
+			fmt.Println("PUT cancelado")
 			fmt.Fprintf(conn, "ERROR\n")
 			return			
 		}
