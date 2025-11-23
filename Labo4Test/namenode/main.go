@@ -156,9 +156,9 @@ func ejecutarPut(partes []string, conn net.Conn, reader *bufio.Reader) {
 		fmt.Println("NAMENODE: ACK recibido, actualiznado metadata.json")
 		actualizarMetadata(nombre_archivo)
 		conn.Write([]byte("OK\n"))
-	} else {
-		logear("NAMENODE: no recibio ACK")
-		fmt.Println("NAMENODE: no recibio ACK")
+	} else if ack_respuesta == "ERROR" {
+		logear("ERROR: no recibio ACK, PUT cancelado")
+		fmt.Println("NAMENODE: no recibio ACK, PUT cancelado")
 	}
 
 	logear("Se cierra la conexion")

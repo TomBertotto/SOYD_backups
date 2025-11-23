@@ -139,7 +139,10 @@ func ejecutarPut(nombre_archivo string, addrNamenode string) {
 		id_bloque := generarID(nombre_archivo, bloqueID)//CONVENCION: tomo que el id es nombre_archivo_b0.txt, nombre_archivo_b1.txt...
 		err := enviarBloqueADatanode(addrDatanode, id_bloque, data) //me conecto a los datanodes
 		if err != nil {
+			logear("ERROR enviando BLOQUE: PUT cancelado")
 			fmt.Printf("CLIENTE: error enviando el bloque %d -> %s\n", bloqueID, addrDatanode)
+			fmt.Fprintf(conn, "ERROR\n")
+			return			
 		}
 	}
 	
