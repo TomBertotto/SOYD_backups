@@ -107,11 +107,12 @@ func ejecutarPut(partes []string, conn net.Conn, reader *bufio.Reader) {
 	nombre_archivo := partes[1]
 	cant_bloques, err := strconv.Atoi(partes[2])
 	if err != nil {
+		logear("NAMENODE ERROR: cantidad de bloques no valida")
 		conn.Write([]byte("NAMENODE ERROR: cantidad de bloques no valida\n"))
 		return
 	}
 	
-
+	logear(fmt.Sprintf("PUT recibido: %s con %d bloques", nombre_archivo, cant_bloques))
 	fmt.Printf("NAMENODE: Recibi PUT %s con %d bloques\n", nombre_archivo, cant_bloques)
 
 	metadata := cargarMetadata()
@@ -144,20 +145,24 @@ func ejecutarPut(partes []string, conn net.Conn, reader *bufio.Reader) {
 	//------------ESPERA POR ACK-----------------
 	ack_respuesta, err := reader.ReadString('\n')
 	if err != nil {
+		logear("ERROR leyendo ACK")
 		fmt.Println("NAMENODE: error leyendo ACK", err)
 		return
 	}
 	ack_respuesta = strings.TrimSpace(ack_respuesta)
 
 	if ack_respuesta == "ACK" {
+		logear("ACK RECIBIDO: actualizando metadata.json")
 		fmt.Println("NAMENODE: ACK recibido, actualiznado metadata.json")
 		actualizarMetadata(nombre_archivo)
 		conn.Write([]byte("OK\n"))
 	} else {
+		logear("NAMENODE: no recibio ACK")
 		fmt.Println("NAMENODE: no recibio ACK")
 	}
 
-	fmt.Println("NAMENODE: cierrta conexion despues de ACK")
+	logear("Se cierra la conexion")
+	fmt.Println("NAMENODE: cierra conexion despues de ACK")
 	conn.Close()
 }
 
@@ -171,9 +176,10 @@ func ejecutarGet(partes []string, conn net.Conn) {
 
 	nombre_archivo := partes[1]
 	fmt.Println("NAMENODE: Recibi GET de archivo\n", nombre_archivo)
-
+	logear("GET recibido, archivo: " + nombre_archivo)
 	contenido, err := os.ReadFile("metadata.json")
 	if err != nil {
+		logear("ERROR leyendo metadata")
 		conn.Write([]byte("NAMENODE: ERROR leyendo metadata\n"))
 		conn.Write([]byte("END\n"))
 		return
@@ -182,6 +188,7 @@ func ejecutarGet(partes []string, conn net.Conn) {
 	var metadata map[string][]map[string]string
 	err = json.Unmarshal(contenido, &metadata)
 	if err != nil {
+		logear("ERROR parseando metadata")
 		conn.Write([]byte("NAMENODE: ERROR parseando metadata\n"))
 		conn.Write([]byte("END\n"))
 		return
@@ -190,6 +197,7 @@ func ejecutarGet(partes []string, conn net.Conn) {
 	bloques, exito := metadata[nombre_archivo]
 
 	if !exito {
+		logear("ARCHIVO NO encontrado en metadata")
 		conn.Write([]byte("NAMENODE: ERROR archivo NO encontrado en metadata\n"))
 		conn.Write([]byte("END\n"))
 		return		
@@ -205,6 +213,7 @@ func ejecutarGet(partes []string, conn net.Conn) {
 func ejecutarLS(conn net.Conn) {
 	contenido, err := os.ReadFile("metadata.json")
 	if err != nil {
+		logear("ERROR leyendo metadata.json")
 		conn.Write([]byte("NAMENODE: Error leyendo METADATA\n"))
 		return
 	}
@@ -224,6 +233,7 @@ func ejecutarInfo(partes []string, conn net.Conn) {
 	nombre_archivo := partes[1]
 	contenido, err := os.ReadFile("metadata.json")
 	if err != nil {
+		logear("ERROR leyendo metadata")
 		conn.Write([]byte("NAMENODE: error leyendo METADATA\n"))
 		conn.Write([]byte("END\n"))
 		return
@@ -234,6 +244,7 @@ func ejecutarInfo(partes []string, conn net.Conn) {
 
 	bloques, existe := metadata[nombre_archivo]
 	if !existe {
+		logear("El archivo no existe")
 		conn.Write([]byte("NO_EXISTE\n"))
 		conn.Write([]byte("END\n"))
 		return
@@ -249,6 +260,7 @@ func ejecutarInfo(partes []string, conn net.Conn) {
 
 func ejecutarRM(partes []string, conn net.Conn, reader *bufio.Reader) {
 	if len(partes) < 2 {
+		logear("ERROR: falta nombre archivo")
 		conn.Write([]byte("NAMENODE: Error falta nombre archivo\nEND\n"))
 		return
 	}
@@ -257,6 +269,7 @@ func ejecutarRM(partes []string, conn net.Conn, reader *bufio.Reader) {
 
 	contenido, err := os.ReadFile("metadata.json")
 	if err != nil {
+		logear("ERROR leyendo metadata")
 		conn.Write([]byte("ERROR leyenedo metadata\nEND\n"))
 		return
 	}
@@ -266,6 +279,7 @@ func ejecutarRM(partes []string, conn net.Conn, reader *bufio.Reader) {
 
 	bloques, existe := metadata[nombre_archivo]
 	if !existe {
+		logear("No existe el archivo")
 		conn.Write([]byte("NO_EXISTE\nEND\n"))
 		return
 	}
@@ -278,6 +292,7 @@ func ejecutarRM(partes []string, conn net.Conn, reader *bufio.Reader) {
 
 	ack, err := reader.ReadString('\n')
 	if err != nil {
+		logear("ERROR leyendo ACK")
 		fmt.Println("NAMENODE: error leyendo ACK:", err)
 		return
 	}
@@ -288,7 +303,7 @@ func ejecutarRM(partes []string, conn net.Conn, reader *bufio.Reader) {
 		delete(metadata, nombre_archivo)
 		nuevo, _ := json.MarshalIndent(metadata, "", " ")
 		os.WriteFile("metadata.json", nuevo, 0644)
-
+		logear("se actualizo metadata.json --- archivo eliminado")
 		fmt.Println("NAMENODE: metadata.json actualizado (archivo eliminado)")
 		conn.Write([]byte("OK\n"))
 	}
@@ -301,7 +316,8 @@ func administrarConexion(conn net.Conn) {
 
 	linea, err := reader.ReadString('\n')
 	if err != nil {
-		log.Println("NAMENODE: error leyendo el envio de CLIENT", err)
+		logear("ERROR leyendo el envio de CLIENTE")
+		log.Println("NAMENODE: error leyendo el envio de CLIENTE", err)
 		return
 	}
 	
@@ -333,15 +349,17 @@ func main() {
 	
 	listener, err := net.Listen("tcp", ":8000")
 	if err != nil {
+		logear("ERROR al escuchar en el puerto")
 		log.Fatal(err)
 	}
 
-	fmt.Println("Namenode escuchando en puerto 8000")
-
+	fmt.Println("NAMENODE escuchando en puerto 8000")
+	logear("NAMENODE escuchando en puerto 8000")
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Println("Error aceptando conexión:", err)
+			logear("ERROR aceptando conexion")
+			fmt.Println("Error aceptando conexión:", err)
 			continue
 		}
 
