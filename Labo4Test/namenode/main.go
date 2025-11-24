@@ -215,6 +215,7 @@ func ejecutarLS(conn net.Conn) {
 	if err != nil {
 		logear("ERROR leyendo metadata.json")
 		conn.Write([]byte("NAMENODE: Error leyendo METADATA\n"))
+		conn.Write([]byte("END\n"))
 		return
 	}
 
